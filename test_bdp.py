@@ -8,7 +8,7 @@ from Beam import Beam
 from config_0 import beam_0, u
 from Matboard import Matboard
 from Simulation import Simulation
-from strength import analyze
+from strength import analyze, check_section
 
 
 class BridgeTests(unittest.TestCase):
@@ -60,6 +60,37 @@ class BridgeTests(unittest.TestCase):
         reference = beam_0.get_2nd_moment('z', 0 * u.mm).magnitude
         self.assertAlmostEqual(beam.get_2nd_moment('z', 400 * u.mm).magnitude, reference)
         self.assertGreater(beam.get_2nd_moment('z', 600 * u.mm).magnitude, reference)
+
+    def test_diaphragms_fill_the_box_and_clear_the_tabs(self):
+        plates = [p for p in beam_0.matboards if p.dirc == 'x']
+        self.assertEqual([p.vertices[0, 0] for p in plates], [10, 40, 425, 825, 1210, 1240])
+        t = 1.27
+        clear_width, clear_height = 80 - 2*t, 75 - t
+        plate_area = clear_width * clear_height - 2*5*t
+        for plate in plates:
+            x = plate.vertices[0, 0]
+            for cut in [x - t/2, x, x + t/2]:
+                self.assertAlmostEqual(plate.get_sec_area('x', cut).magnitude, plate_area)
+            self.assertEqual(plate.get_sec_area('x', x + t/2 + .001).magnitude, 0)
+            total = sum(p.get_sec_area('x', x).magnitude for p in beam_0.matboards)
+            self.assertAlmostEqual(total, 80*75 + 100*t)
+        plate = plates[0]
+        for y, width in [(75-t, clear_width), (75-t/2, clear_width-10)]:
+            self.assertAlmostEqual(plate.get_sec_area('y', y).magnitude, t*width)
+        self.assertAlmostEqual(plate.get_sec_area('z', clear_width/2-5).magnitude, t*clear_height)
+
+    def test_web_buckling_uses_the_local_diaphragm_bay(self):
+        for x, spacing in [(0, np.inf), (25, 30), (41, 385), (425, 400),
+                           (625, 400), (900, 385), (1225, 30), (1250, np.inf)]:
+            self.assertEqual(beam_0.web_panel_length(x).m_as(u.mm), spacing)
+        # Removing the interior brace at 425 merges the 385 and 400 mm bays.
+        boards = [p for p in beam_0.matboards if p.dirc != 'x' or p.vertices[0, 0] != 425]
+        longer_bay = Beam(boards, beam_0.glue)
+        original, positive, _ = check_section(beam_0, 425)
+        modified, new_positive, _ = check_section(longer_bay, 425)
+        self.assertEqual(modified['panel_length_mm'], 785)
+        self.assertLess(new_positive['web_shear'].capacity, positive['web_shear'].capacity)
+        self.assertEqual(original['Iz_mm4'], modified['Iz_mm4'])
 
     def test_design_zero_governing_mode(self):
         sim = Simulation(np.full(6, 400 / 6) * u.N, beam_0)

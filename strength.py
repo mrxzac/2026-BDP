@@ -3,7 +3,8 @@
 Internal units are mm, N and MPa. Positive moment compresses the upper flange.
 The box has two vertical webs and continuous horizontal top and bottom flanges.
 Longitudinal plates carry bending and shear. Transverse diaphragms set the web
-panel length through beam.diaphragm_spacing (a length or a function of x).
+panel length from their matboard positions. Configurations without explicit
+plates can supply beam.diaphragm_spacing as a length or a function of x.
 """
 
 from dataclasses import dataclass
@@ -139,8 +140,8 @@ def _section(strips, joints, panel_length):
         q_joint = sum(p.first_moment_above(height, ybar) for p in strips)
         properties.update({f'Q_glue_{i}_mm3': q_joint, f'b_glue_{i}_mm': bonded_width})
         glue.append(Limit(GLUE_STRENGTH, q_joint / (inertia * bonded_width)))
-    if not np.isfinite(panel_length) or panel_length <= 0:
-        raise ValueError("Use a positive, finite diaphragm spacing.")
+    if not panel_length > 0:
+        raise ValueError("Diaphragm spacing must be positive.")
     shear_buckling = min(5 * PLATE_FACTOR * ((w.width / w.height)**2
                                              + (w.width / panel_length)**2) for w in webs)
     shear = {'shear': Limit(Matboard.s_s.m_as(u.MPa), shear_per_n),
@@ -167,9 +168,7 @@ def _section_key(beam, x):
             y1, z1 = points[:, 1:].max(axis=0)
             strips.append(Strip(plate.dirc, y0, y1, z0, z1))
     joints = tuple((_length_at(h, x), _length_at(b, x)) for h, b in beam.glue)
-    if beam.diaphragm_spacing is None:
-        raise ValueError("Set beam.diaphragm_spacing to calculate web shear buckling.")
-    return tuple(strips), joints, _length_at(beam.diaphragm_spacing, x)
+    return tuple(strips), joints, beam.web_panel_length(x).m_as(u.mm)
 
 
 def check_section(beam, x, cache=None):

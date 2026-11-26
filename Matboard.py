@@ -34,7 +34,8 @@ class Matboard:
         empty = np.empty((0, 3))
 
         if axis == normal:
-            if abs(vertices[0, axis] - position) > half_t:
+            centre = vertices[0, axis]
+            if not centre - half_t <= position <= centre + half_t:
                 return empty
             section = vertices.copy()
             section[:, axis] = position
@@ -56,13 +57,24 @@ class Matboard:
         crossings = np.unique(points[:, tangent])
         if len(crossings) < 2:
             return empty
-        # Every supported section is a single strip. Catch disjoint interior cuts.
         if len(crossings) > 2:
-            raise ValueError("Split a plate with disjoint cross-sections into separate matboards.")
+            # A cut along notch shoulders can touch several vertices but still
+            # be one strip. Check each interval for polygon interior or boundary.
+            mid = ((crossings[:-1] + crossings[1:]) / 2)[:, None]
+            straddles = (starts[:, axis] > position) != (ends[:, axis] > position)
+            interior = np.count_nonzero(points[straddles, tangent] > mid, axis=1) % 2
+            flat = (start_coord == position) & (end_coord == position)
+            t0 = vertices[:, tangent][flat]
+            t1 = np.roll(vertices[:, tangent], -1)[flat]
+            boundary = ((np.minimum(t0, t1) <= mid) & (mid <= np.maximum(t0, t1))).any(axis=1)
+            if not np.all(interior | boundary):
+                raise ValueError("Split a plate with disjoint cross-sections into separate matboards.")
+        low, high = points[:, tangent].argmin(), points[:, tangent].argmax()
+        if starts[low, axis] < ends[low, axis]:
+            low, high = high, low
+        descending, ascending = points[low], points[high]
         offset = np.zeros(3)
         offset[normal] = half_t
-        descending = points[starts[:, axis] > ends[:, axis]][-1]
-        ascending = points[starts[:, axis] < ends[:, axis]][-1]
         return np.stack([descending - offset, descending + offset,
                          ascending + offset, ascending - offset])
 

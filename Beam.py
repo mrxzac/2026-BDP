@@ -6,6 +6,20 @@ class Beam:
         self.glue = glue  # (interface elevation, total bonded width) per joint
         self.diaphragm_spacing = diaphragm_spacing
 
+    def web_panel_length(self, x):
+        """Centre-to-centre brace spacing in mm; at a shared brace use the longer bay."""
+        position = compute.u.Quantity(x, compute.u.mm)
+        centres = sorted({b.vertices[0, 0] for b in self.matboards if b.dirc == "x"})
+        if centres:
+            bays = [b - a for a, b in zip(centres, centres[1:])
+                    if a <= position.magnitude <= b]
+            # At a free end there is no second diaphragm to brace a finite bay.
+            return max(bays, default=float("inf")) * compute.u.mm
+        if self.diaphragm_spacing is None:
+            return float("inf") * compute.u.mm
+        spacing = self.diaphragm_spacing
+        return compute.u.Quantity(spacing(position) if callable(spacing) else spacing, compute.u.mm)
+
     def get_endpoints(self):
         bounds = []
         for board in self.matboards:
