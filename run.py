@@ -124,6 +124,53 @@ def plot_analysis(sim, envelope, data, title):
     return fig
 
 
+def plot_inertia(beam, station_count):
+    """Plot gross centroidal area moments, including the physical diaphragm sections."""
+    import matplotlib.pyplot as plt
+
+    start, end = (p.m_as(u.mm) for p in beam.get_endpoints())
+    edges = []
+    diaphragms = []
+    for board in beam.matboards:
+        if board.dirc == 'x':
+            center = board.vertices[0, 0]
+            thickness = board.t.m_as(u.mm)
+            diaphragms.append((center, thickness))
+            edges.extend([center - thickness / 2, center + thickness / 2])
+        else:
+            edges.extend(board.vertices[:, 0])
+
+    # Sample both sides of every geometric change so even a coarse grid draws
+    # a square jump at each diaphragm face and preserves short reinforcements.
+    edges = np.unique(edges)
+    x = np.unique(np.r_[np.linspace(start, end, station_count), edges,
+                        np.nextafter(edges, -np.inf), np.nextafter(edges, np.inf)])
+    x = x[(x >= start) & (x <= end)]
+    iz = [beam.get_2nd_moment('z', pos).m_as(u.mm**4) / 1e6 for pos in x]
+    iy = [beam.get_2nd_moment('y', pos).m_as(u.mm**4) / 1e6 for pos in x]
+
+    widths = [2.6, 1] if diaphragms else [1]
+    fig, axes = plt.subplots(1, len(widths), width_ratios=widths, sharey=True,
+                             squeeze=False, figsize=(10, 4), layout='constrained')
+    full = axes[0, 0]
+    for ax in axes[0]:
+        ax.plot(x, iz, color='#176589', lw=1.6, label=r'$I_z$')
+        ax.plot(x, iy, color='#ab5924', lw=1.5, ls='--', label=r'$I_y$')
+        ax.grid(axis='y', alpha=0.22)
+        ax.set_xlabel('Bridge position, x (mm)')
+        ax.set_ylim(bottom=0)
+    full.set(xlim=(start, end), ylabel='Second moment of area (10⁶ mm⁴)', title='Full bridge')
+    full.legend(loc='upper center', ncols=2)
+    if diaphragms:
+        center, thickness = min(diaphragms, key=lambda p: abs(p[0] - (start + end) / 2))
+        zoom = axes[0, 1]
+        zoom.set(xlim=(max(start, center - 2 * thickness), min(end, center + 2 * thickness)),
+                 title=f'Diaphragm at x = {center:g} mm')
+        zoom.ticklabel_format(axis='x', style='plain', useOffset=False)
+    fig.suptitle('Centroidal area moments along the bridge')
+    return fig
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--case', choices=['1', '2', 'both', 'later'], default='both',
@@ -168,6 +215,8 @@ def main():
             plot_analysis(sim, envelope, data, title)
     if not args.no_plot:
         import matplotlib.pyplot as plt
+
+        plot_inertia(beam, args.stations)
         plt.show()
 
 
