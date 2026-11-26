@@ -32,4 +32,4 @@ beam_0 = Beam([
         (x0,     y2, z2),
     ], direction)
     for direction, (y1, z1), (y2, z2) in sections
-])
+], [])

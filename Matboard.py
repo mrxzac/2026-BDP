@@ -1,10 +1,10 @@
-from pint import UnitRegistry
-import matplotlib.pyplot as plt
-import math
-from compute import geometric_centroid, polygon_area
+import numpy as np
 
-u = UnitRegistry()
-d = {'x':0,'y':1,'z':2}
+import compute
+
+u = compute.u
+d = compute.d
+
 
 class Matboard:
     s_t = 30 * u.MPa 
@@ -22,50 +22,58 @@ class Matboard:
 
     def __init__(self, vertices, dirc):
         self.dirc = dirc
-        self.vertices = vertices
-            
-    def get_sec(self, dirc, val):
-        
-        dim = d[dirc]
-        dim_ = d[self.dirc]
+        self.vertices = compute.points_in_mm(vertices)
+
+    def _section(self, dirc, val):
+        axis = d[dirc]
+        normal_axis = d[self.dirc]
+        vertices = u.Quantity(self.vertices, u.mm)
+        position = u.Quantity(val, u.mm)
+        half_thickness = self.t / 2
 
         if dirc == self.dirc:
-            board_pos = self.vertices[0][dim]
-            if board_pos - self.t / 2 <= val <= board_pos + self.t / 2:
-                return [tuple(val if j == dim else coord for j, coord in enumerate(p))
-                        for p in self.vertices]
-            return []
+            board_pos = vertices[0, axis]
+            if board_pos - half_thickness <= position <= board_pos + half_thickness:
+                section = vertices.copy()
+                section[:, axis] = position
+                return section
+            return np.empty((0, 3)) * u.mm
 
-        c1, c2 = None, None
-        n = len(self.vertices)
-        for i in range(n):
-            a = self.vertices[i]
-            b = self.vertices[(i + 1) % n]
-
-            if a[dim] == b[dim] or not min(a[dim], b[dim]) <= val <= max(a[dim], b[dim]):
+        descending = ascending = None
+        for start, end in zip(vertices, np.roll(vertices, -1, axis=0)):
+            low, high = sorted((start[axis], end[axis]))
+            if low == high or not low <= position <= high:
                 continue
-            t = (val - a[dim]) / (b[dim] - a[dim])
-            point = [a[j] + t * (b[j] - a[j]) for j in range(3)]
-            if a[dim] > b[dim]:
-                c1 = point
+
+            fraction = (position - start[axis]) / (end[axis] - start[axis])
+            point = (1 - fraction) * start + fraction * end
+            point[axis] = position
+            if start[axis] > end[axis]:
+                descending = point
             else:
-                c2 = point
+                ascending = point
 
-        if c1 is None or c2 is None or c1 == c2:
-            return []
+        if descending is None or ascending is None or (descending == ascending).all():
+            return np.empty((0, 3)) * u.mm
 
-        c1_l = [c - self.t/2 if i == dim_ else c for i, c in enumerate(c1)]
-        c2_l = [c - self.t/2 if i == dim_ else c for i, c in enumerate(c2)]
-        c1_r = [c + self.t/2 if i == dim_ else c for i, c in enumerate(c1)]
-        c2_r = [c + self.t/2 if i == dim_ else c for i, c in enumerate(c2)]
+        offset = np.zeros(3) * u.mm
+        offset[normal_axis] = half_thickness
+        return np.stack([
+            descending - offset, descending + offset,
+            ascending + offset, ascending - offset,
+        ])
 
-        return [c1_l, c1_r, c2_r, c2_l]
-    
+    def get_sec_mm(self, dirc, val):
+        return self._section(dirc, val).magnitude
+
+    def get_sec(self, dirc, val):
+        points = self._section(dirc, val)
+        if dirc == self.dirc:
+            return [tuple(point) for point in points]
+        return [list(point) for point in points]
+
     def get_sec_area(self, dirc, val):
-        return polygon_area(self.get_sec(dirc,val))
-    
+        return compute.polygon_area(self.get_sec_mm(dirc, val))
+
     def get_sec_center(self, dirc, val):
-        return geometric_centroid(self.get_sec(dirc,val))
-    
-    
-    
+        return compute.geometric_centroid(self.get_sec_mm(dirc, val))

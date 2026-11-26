@@ -1,58 +1,52 @@
-import math
+import numpy as np
+from pint import UnitRegistry
 
-from pint import Quantity
+u = UnitRegistry()
+d = {"x": 0, "y": 1, "z": 2}
 
 
-def _points_in_mm(points):
-    # Matboard imports compute, so use its registry after module initialization.
-    from Matboard import u
-
-    coords = [
-        tuple(v.m_as("mm") if isinstance(v, Quantity) else v for v in point)
+def points_in_mm(points):
+    if isinstance(points, np.ndarray) and points.dtype != object:
+        return np.asarray(points, dtype=float)
+    return np.array([
+        [u.Quantity(coord, u.mm).magnitude for coord in point]
         for point in points
-    ]
-    return coords, u.mm
+    ], dtype=float)
 
 
-def _triangle_cross_products(points):
-    """Cross products for the triangle fan about the first vertex, in mm²."""
-    x0, y0, z0 = points[0]
-    offsets = [(x - x0, y - y0, z - z0) for x, y, z in points[1:]]
-    return [
-        (ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx)
-        for (ax, ay, az), (bx, by, bz) in zip(offsets, offsets[1:])
-    ]
+def polygon_properties_mm(points):
+    offsets = points[1:] - points[0]
+    crosses = np.cross(offsets[:-1], offsets[1:])
+    normal = crosses.sum(axis=0)
+    area = np.linalg.norm(normal) / 2
+    weights = crosses[:, np.argmax(np.abs(normal))]
+    triangle_centers = (offsets[:-1] + offsets[1:]) / 3
+    center = points[0] + np.average(triangle_centers, axis=0, weights=weights)
+    return area, center
 
 
 def geometric_centroid(points):
-    """Return the (x, y, z) area centroid of an ordered planar polygon in mm."""
-    points, mm = _points_in_mm(points)
-    if len(points) < 3:
-        raise ValueError("A polygon requires at least 3 points.")
-
-    crosses = _triangle_cross_products(points)
-    normal = tuple(math.fsum(components) for components in zip(*crosses))
-    axis = max(range(3), key=lambda i: abs(normal[i]))
-    if normal[axis] == 0:
-        raise ValueError("Polygon has zero area.")
-
-    # Signed projected areas give each triangle its share of the polygon.
-    origin = points[0]
-    moments = [0.0, 0.0, 0.0]
-    for p1, p2, cross in zip(points[1:], points[2:], crosses):
-        for i in range(3):
-            tri_offset = ((p1[i] - origin[i]) + (p2[i] - origin[i])) / 3
-            moments[i] += cross[axis] * tri_offset
-
-    return tuple((p + moment / normal[axis]) * mm for p, moment in zip(origin, moments))
+    points = points_in_mm(points)
+    _, center = polygon_properties_mm(points)
+    return tuple(center * u.mm)
 
 
 def polygon_area(points):
-    """Return the area of an ordered planar polygon in mm²."""
-    points, mm = _points_in_mm(points)
-    if len(points) < 3:
-        return 0.0 * mm**2
+    area, _ = polygon_properties_mm(points_in_mm(points))
+    return area * u.mm**2
 
-    crosses = _triangle_cross_products(points)
-    normal = tuple(math.fsum(components) for components in zip(*crosses))
-    return (math.hypot(*normal) / 2) * mm**2
+def _centroid(sections):
+    _, areas, centers = zip(*sections)
+    return np.average(centers, axis=0, weights=areas)
+
+
+def _local_moments(points, center):
+    y = points[:, 1] - center[1]
+    z = points[:, 2] - center[2]
+    next_y = np.roll(y, -1)
+    next_z = np.roll(z, -1)
+
+    cross = (y * next_z - next_y * z )/2
+    iy = np.sum(cross * (z**2 + z * next_z + next_z**2)) / 6
+    iz = np.sum(cross * (y**2 + y * next_y + next_y**2)) / 6
+    return abs(iy), abs(iz)
