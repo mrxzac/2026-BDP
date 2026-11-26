@@ -24,47 +24,50 @@ class Matboard:
         self.dirc = dirc
         self.vertices = compute.points_in_mm(vertices)
 
-    def _section(self, dirc, val):
-        axis = d[dirc]
-        normal_axis = d[self.dirc]
-        vertices = u.Quantity(self.vertices, u.mm)
-        position = u.Quantity(val, u.mm)
-        half_thickness = self.t / 2
-
-        if dirc == self.dirc:
-            board_pos = vertices[0, axis]
-            if board_pos - half_thickness <= position <= board_pos + half_thickness:
-                section = vertices.copy()
-                section[:, axis] = position
-                return section
-            return np.empty((0, 3)) * u.mm
-
-        descending = ascending = None
-        for start, end in zip(vertices, np.roll(vertices, -1, axis=0)):
-            low, high = sorted((start[axis], end[axis]))
-            if low == high or not low <= position <= high:
-                continue
-
-            fraction = (position - start[axis]) / (end[axis] - start[axis])
-            point = (1 - fraction) * start + fraction * end
-            point[axis] = position
-            if start[axis] > end[axis]:
-                descending = point
-            else:
-                ascending = point
-
-        if descending is None or ascending is None or (descending == ascending).all():
-            return np.empty((0, 3)) * u.mm
-
-        offset = np.zeros(3) * u.mm
-        offset[normal_axis] = half_thickness
-        return np.stack([
-            descending - offset, descending + offset,
-            ascending + offset, ascending - offset,
-        ])
-
     def get_sec_mm(self, dirc, val):
-        return self._section(dirc, val).magnitude
+        """Cut a flat plate with a single connected intersection at the given plane."""
+        axis = d[dirc]
+        normal = d[self.dirc]
+        position = u.Quantity(val, u.mm).magnitude
+        vertices = self.vertices
+        half_t = self.t.m_as(u.mm) / 2
+        empty = np.empty((0, 3))
+
+        if axis == normal:
+            if abs(vertices[0, axis] - position) > half_t:
+                return empty
+            section = vertices.copy()
+            section[:, axis] = position
+            return section
+
+        if position < vertices[:, axis].min() or position > vertices[:, axis].max():
+            return empty
+        ends = np.roll(vertices, -1, axis=0)
+        start_coord, end_coord = vertices[:, axis], ends[:, axis]
+        hits = ((start_coord != end_coord)
+                & (position >= np.minimum(start_coord, end_coord))
+                & (position <= np.maximum(start_coord, end_coord)))
+        starts, ends = vertices[hits], ends[hits]
+        if not len(starts):
+            return empty
+        fraction = (position - starts[:, axis]) / (ends[:, axis] - starts[:, axis])
+        points = starts + fraction[:, None] * (ends - starts)
+        tangent = 3 - axis - normal
+        crossings = np.unique(points[:, tangent])
+        if len(crossings) < 2:
+            return empty
+        # Every supported section is a single strip. Catch disjoint interior cuts.
+        if len(crossings) > 2:
+            raise ValueError("Split a plate with disjoint cross-sections into separate matboards.")
+        offset = np.zeros(3)
+        offset[normal] = half_t
+        descending = points[starts[:, axis] > ends[:, axis]][-1]
+        ascending = points[starts[:, axis] < ends[:, axis]][-1]
+        return np.stack([descending - offset, descending + offset,
+                         ascending + offset, ascending - offset])
+
+    def _section(self, dirc, val):
+        return self.get_sec_mm(dirc, val) * u.mm
 
     def get_sec(self, dirc, val):
         points = self._section(dirc, val)

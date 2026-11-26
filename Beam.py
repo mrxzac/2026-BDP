@@ -1,11 +1,10 @@
-import numpy as np
-
 import compute
 
 class Beam:
-    def __init__(self, matboards, glue):
+    def __init__(self, matboards, glue, diaphragm_spacing=None):
         self.matboards = matboards
-        self.glue = glue
+        self.glue = glue  # (interface elevation, total bonded width) per joint
+        self.diaphragm_spacing = diaphragm_spacing
 
     def get_endpoints(self):
         bounds = []

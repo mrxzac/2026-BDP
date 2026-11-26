@@ -1,6 +1,5 @@
 from Beam import Beam
-from Matboard import Matboard,u
-from pint import UnitRegistry
+from Matboard import Matboard, u
 
 x0 = 0 * u.mm
 length = 1250 * u.mm
@@ -32,4 +31,4 @@ beam_0 = Beam([
         (x0,     y2, z2),
     ], direction)
     for direction, (y1, z1), (y2, z2) in sections
-], [])
+], [(deck_y, 2 * tab_width)], diaphragm_spacing=400 * u.mm)

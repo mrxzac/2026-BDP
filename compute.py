@@ -6,6 +6,8 @@ d = {"x": 0, "y": 1, "z": 2}
 
 
 def points_in_mm(points):
+    if isinstance(points, u.Quantity):
+        return np.asarray(points.to(u.mm).magnitude, dtype=float)
     if isinstance(points, np.ndarray) and points.dtype != object:
         return np.asarray(points, dtype=float)
     return np.array([
@@ -15,10 +17,14 @@ def points_in_mm(points):
 
 
 def polygon_properties_mm(points):
+    if len(points) < 3:
+        return 0.0, np.full(3, np.nan)
     offsets = points[1:] - points[0]
     crosses = np.cross(offsets[:-1], offsets[1:])
     normal = crosses.sum(axis=0)
     area = np.linalg.norm(normal) / 2
+    if area == 0:
+        return 0.0, np.full(3, np.nan)
     weights = crosses[:, np.argmax(np.abs(normal))]
     triangle_centers = (offsets[:-1] + offsets[1:]) / 3
     center = points[0] + np.average(triangle_centers, axis=0, weights=weights)
