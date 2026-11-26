@@ -50,3 +50,5 @@ def _local_moments(points, center):
     iy = np.sum(cross * (z**2 + z * next_z + next_z**2)) / 6
     iz = np.sum(cross * (y**2 + y * next_y + next_y**2)) / 6
     return abs(iy), abs(iz)
+
+

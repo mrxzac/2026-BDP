@@ -30,7 +30,8 @@ class Simulation:
         self.loads = loads
         print("loads are defined.")
         
-    def reaction(self):
+    def reaction(self,position):
+        self.loads(position)
         x_L = self.x[0] + self.side
         self.reac_R = np.sum(
             self.loads * (self.x - x_L)
@@ -38,7 +39,8 @@ class Simulation:
         self.reac_L = np.sum(self.loads) - self.reac_R
         print("Reaction forces are computed.")
         
-    def SFD(self):
+    def SFD(self,position):
+        self.reaction(position)
         forces = -self.loads.copy()
         i_L = np.argmin(np.abs(self.x - (self.x[0] + self.side)))
         i_R = np.argmin(np.abs(self.x - (self.x[-1] - self.side)))
@@ -48,7 +50,8 @@ class Simulation:
         print("Shear forces are computed.")
         return self.sfd
 
-    def BMD(self):
+    def BMD(self,position):
+        self.SFD(position)
         dx = np.diff(self.x)
         self.bmd = np.zeros(len(self.x)) * u.N * u.mm
         self.bmd[1:] = np.cumsum(self.sfd[:-1] * dx)
@@ -79,11 +82,16 @@ class Simulation:
         print("Centroids are computed.")
         return self.centroids
         
-    def calculations(self):
+    def calculations(self,position):
+        
+        self.I()
+        self.centroids()
+        self.y_bounds()
+        
+        self.BMD(position)
+        
         self.flexural_stress_bot = self.bmd*(self.centroids-self.y_bot)/self.I
         self.flexural_stress_top = self.bmd*(self.y_top-self.centroids)/self.I
-        
-    
 
     def plot(self):
         x = self.x.to(u.mm).magnitude

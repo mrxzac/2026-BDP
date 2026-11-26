@@ -57,3 +57,8 @@ class Beam:
             iz += local_iz + area * (center[1] - y_bar)**2
         moment = {"x": iy + iz, "z": iy, "y": iz}[dirc]
         return moment * compute.u.mm**4
+    
+    def get_1st_moment(self, x, y, dirc = 'y'):
+        sections = self._sections_at(x)
+        _, y_bar, z_bar = compute._centroid(sections)
+        
