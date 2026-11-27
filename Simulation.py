@@ -131,10 +131,13 @@ class Simulation:
         compressed_web_depth = web_top - self.centroids
         web_compression = 6 * plate_factor * (t / compressed_web_depth)**2
 
-        web_shear = np.ones(len(self.x)) * 5 * plate_factor * (t / web_height)**2
+        maxwidth = 0
         for left, right in zip(diaphragm_positions, diaphragm_positions[1:]):
-            in_panel = (left <= self.x) & (self.x < right)
-            web_shear[in_panel] += 5 * plate_factor * (t / (right - left))**2
+            if right-left > maxwidth:
+                maxwidth = right-left
+            
+        web_shear = 5 * plate_factor *( (t / web_height)**2 +(t / maxwidth)**2)
+        
         return middle_flange, side_flange, web_compression, web_shear
         
 
