@@ -19,6 +19,8 @@ class Matboard:
     """ Poisson's Ratio """
     t = 1.27 * u.mm   
     """ thickness """
+    s_g = 2 * u.MPa 
+    """ glue shear strength"""
 
     def __init__(self, vertices, dirc):
         self.dirc = dirc

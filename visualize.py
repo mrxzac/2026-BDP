@@ -1,7 +1,11 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
-from config_0 import beam_0,u
+from Matboard import u
+
+
+from config_trapezoid import beam_1,beam_0
+
 
 def plot_matboard(
     board,ax,
@@ -27,10 +31,11 @@ def plot_matboard(
 
 
 def plot_beam(beam,alpha=0.4,padding=5):
-    fig = plt.figure(figsize=(15, 7))
+    fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
     colors = {"x": "orange","y": "skyblue","z": "lightgreen"}
     all_vertices = []
+    beam.matboards = [beam.matboards[9]]
     for board in beam.matboards:
         vertices = plot_matboard(board,ax,color=colors[board.dirc],alpha=alpha)
         all_vertices.append(vertices)
@@ -43,6 +48,7 @@ def plot_beam(beam,alpha=0.4,padding=5):
     ax.set_ylim(mins[1], maxs[1])
     ax.set_zlim(mins[2], maxs[2])
     ax.set_aspect("equal", adjustable="box")
+    ax.set_axis_off()
     # ax.set_xlabel("X (mm)")
     # ax.set_ylabel("Y (mm)")
     # ax.set_zlabel("Z (mm)")
@@ -50,4 +56,5 @@ def plot_beam(beam,alpha=0.4,padding=5):
     plt.show()
     return ax
 
-plot_beam(beam_0, alpha=0.15)
+
+plot_beam(beam_1, alpha=0.15)

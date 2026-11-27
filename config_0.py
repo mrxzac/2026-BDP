@@ -1,4 +1,3 @@
-
 from Beam import Beam
 from Matboard import Matboard, u
 
@@ -60,7 +59,6 @@ buckling_dimensions = {
     "web_height": deck_y,
     "diaphragm_positions": diaphragm_positions,
 }
-glue_shear_strength = 2 * u.MPa 
 
 #diaphragm_section
 #will be considered in the moment of inertia calculation 
