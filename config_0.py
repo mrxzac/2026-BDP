@@ -23,6 +23,7 @@ sections = [
     ("y", (tab_y, inner_z - tab_width), (tab_y, inner_z)),
 ]
 
+#boards placed
 longitudinal_boards = [
     Matboard([
         (x0,     y1, z1),
@@ -39,6 +40,7 @@ support_R = support_L + span
 
 offset = 15 * u.mm
 
+#diaphragm positions along the beam
 diaphragm_positions = [
     support_L - offset,
     support_L + offset,
@@ -47,7 +49,10 @@ diaphragm_positions = [
     support_R - offset,
     support_R + offset,
 ]
-# Use the clear deck width between web faces and the free overhang outside each web.
+
+#choose the critical buckling dimension for the beam
+#i.e. the longest part or other critical axle_positions
+#only these types of buckling is considered
 buckling_dimensions = {
     "middle_flange_width": 2 * inner_z,
     "side_flange_width": half_top - half_box,
@@ -57,6 +62,9 @@ buckling_dimensions = {
 }
 glue_shear_strength = 2 * u.MPa 
 
+#diaphragm_section
+#will be considered in the moment of inertia calculation 
+#if combined into the Beam (optional)
 diaphragm_section = [
     (t,          -inner_z),
     (t,           inner_z),
@@ -80,4 +88,4 @@ glue = [
     (deck_y, 2 * (tab_width+t)),
 ]
 
-beam_0 = Beam(longitudinal_boards + diaphragms, glue, buckling_dimensions )
+beam_0 = Beam(longitudinal_boards, glue, buckling_dimensions )
