@@ -63,6 +63,31 @@ class Matboard:
             ascending + offset, ascending - offset,
         ])
 
+    def get_sec_below_mm(self, x, y, dirc='y'):
+        points = self.get_sec_mm("x", x)
+        axis = d[dirc]
+        level = u.Quantity(y,u.mm).magnitude
+        if len(points) < 3:
+            return np.empty((0, 3))
+        if level <= points[:, axis].min():
+            return np.empty((0, 3))
+        if level >= points[:, axis].max():
+            return points
+        result = []
+        for start, end in zip(points, np.roll(points, -1, axis=0)):
+            inside_start = start[axis] <= level
+            inside_end = end[axis] <= level
+            if inside_start:
+                result.append(start)
+            if inside_start != inside_end:
+                fraction = (level - start[axis]) / (
+                    end[axis] - start[axis]
+                )
+                intersection = start + fraction * (end - start)
+                intersection[axis] = level
+                result.append(intersection)
+        return np.asarray(result).reshape(-1, 3)
+    
     def get_sec_mm(self, dirc, val):
         return self._section(dirc, val).magnitude
 

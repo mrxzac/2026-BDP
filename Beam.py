@@ -58,7 +58,50 @@ class Beam:
         moment = {"x": iy + iz, "z": iy, "y": iz}[dirc]
         return moment * compute.u.mm**4
     
-    def get_1st_moment(self, x, y, dirc = 'y'):
+    def get_width(self, x, y):
+        level = compute.u.Quantity(y, compute.u.mm).magnitude
+        intervals = []
+        for board in self.matboards:
+            points = board.get_sec_mm("x", x)
+            if len(points) < 3:
+                continue
+            intersections = []
+            for start, end in zip(points, np.roll(points, -1, axis=0)):
+                y1, z1 = start[1:]
+                y2, z2 = end[1:]
+                if y1 == y2:
+                    if level == y1:
+                        intervals.append(sorted((z1, z2)))
+                    continue
+                if min(y1, y2) <= level < max(y1, y2):
+                    fraction = (level - y1) / (y2 - y1)
+                    z = z1 + fraction * (z2 - z1)
+                    intersections.append(z)
+            intersections.sort()
+            for i in range(0, len(intersections) - 1, 2):
+                intervals.append(intersections[i:i + 2])
+                
+        merged = []
+        for start, end in sorted(intervals):
+            if merged and start <= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], end)
+            else:
+                merged.append([start, end])
+
+        width = sum(end - start for start, end in merged)
+
+        return width * compute.u.mm
+
+    def get_1st_moment(self, x, y, dirc='y'):
         sections = self._sections_at(x)
-        _, y_bar, z_bar = compute._centroid(sections)
-        
+        axis = compute.d[dirc]
+        centroid = compute._centroid(sections)[axis]
+        Q = 0.0
+        for board in self.matboards:
+            points = board.get_sec_below_mm(x, y, dirc)
+            if len(points) < 3:
+                continue
+            area, center = compute.polygon_properties_mm(points)
+            Q += area * (centroid - center[axis])
+        return abs(Q) * compute.u.mm**3
+            

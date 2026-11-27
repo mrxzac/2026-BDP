@@ -32,7 +32,7 @@ def plot_beam(beam,alpha=0.4,padding=5):
     colors = {"x": "orange","y": "skyblue","z": "lightgreen"}
     all_vertices = []
     for board in beam.matboards:
-        vertices = plot_matboard(board,ax,color=colors[board.dirc],alpha=alpha,show_labels=show_labels,)
+        vertices = plot_matboard(board,ax,color=colors[board.dirc],alpha=alpha)
         all_vertices.append(vertices)
 
     vertices = np.vstack(all_vertices)

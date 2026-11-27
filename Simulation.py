@@ -20,7 +20,7 @@ class Simulation:
             min, max, density
         )
         
-    def loads(self, position):
+    def cal_loads(self, position):
         loads = np.zeros(len(self.x)) * u.N
         locations = self.axle_positions + position + self.side
         for x_, force in zip(locations, self.loadcase):
@@ -28,16 +28,16 @@ class Simulation:
                 i = np.argmin(np.abs(self.x - x_))
                 loads[i] = force
         self.loads = loads
-        print("loads are defined.")
+        #print("loads are defined.")
         
     def reaction(self,position):
-        self.loads(position)
+        self.cal_loads(position)
         x_L = self.x[0] + self.side
         self.reac_R = np.sum(
             self.loads * (self.x - x_L)
         ) / (1200 * u.mm)
         self.reac_L = np.sum(self.loads) - self.reac_R
-        print("Reaction forces are computed.")
+        #print("Reaction forces are computed.")
         
     def SFD(self,position):
         self.reaction(position)
@@ -46,19 +46,19 @@ class Simulation:
         i_R = np.argmin(np.abs(self.x - (self.x[-1] - self.side)))
         forces[i_L] += self.reac_L
         forces[i_R] += self.reac_R
-        self.sfd = np.cumsum(forces)
-        print("Shear forces are computed.")
-        return self.sfd
+        self.V = np.cumsum(forces)
+        #print("Shear forces are computed.")
+        return self.V
 
     def BMD(self,position):
         self.SFD(position)
         dx = np.diff(self.x)
-        self.bmd = np.zeros(len(self.x)) * u.N * u.mm
-        self.bmd[1:] = np.cumsum(self.sfd[:-1] * dx)
-        print("Bending Moments are computed.")
-        return self.bmd
+        self.M = np.zeros(len(self.x)) * u.N * u.mm
+        self.M[1:] = np.cumsum(self.V[:-1] * dx)
+        #print("Bending Moments are computed.")
+        return self.M
     
-    def I(self):
+    def cal_I(self):
         self.I = np.zeros(len(self.x)) * u.mm**4
         for i in range(len(self.x)):
             self.I[i]=self.beam.get_2nd_moment(self.x[i])
@@ -75,23 +75,45 @@ class Simulation:
         print("y boundaries are computed.")
         return self.y_top,self.y_bot
     
-    def centroids(self):
+    def cal_centroids(self):
         self.centroids = np.zeros(len(self.x)) * u.mm
         for i in range(len(self.x)):
             self.centroids[i]=self.beam.get_centroid(self.x[i])
         print("Centroids are computed.")
         return self.centroids
+    
+    def cal_first_moments(self,y):
+        first_moments = np.zeros(len(self.x)) * u.mm**3
+        for i,y_ in zip(range(len(self.x)),y):
+            first_moments[i]=self.beam.get_1st_moment(self.x[i],y_)
+        print(f"First moments are computed at level y={y}.")
+        return first_moments
+        
+    def cen_widths(self):
+        self.widths = np.zeros(len(self.x)) * u.mm
+        for i,c in zip(range(len(self.x)),self.centroids):
+            self.widths[i]=self.beam.get_width(self.x[i],c)
+        print("Central widths are computed.")
+        return self.widths
+        
+    def calculations_location_independent(self):
+        self.cal_I()
+        self.cal_centroids()
+        self.y_bounds()
+        self.cen_widths()
+        glue = self.beam.glue[0][0]*np.ones(len(self.x))
+        self.glue_width = self.beam.glue[0][1]*np.ones(len(self.x))
+        self.first_moments_glue = self.cal_first_moments(glue)
+        self.first_moments = self.cal_first_moments(self.centroids)
         
     def calculations(self,position):
-        
-        self.I()
-        self.centroids()
-        self.y_bounds()
-        
         self.BMD(position)
+        #applied stresses
+        self.shear_stress_center = self.V*self.first_moments/(self.I*self.widths)
+        self.shear_stress_glue = self.V*self.first_moments_glue/(self.I*self.glue_width)
+        self.flexural_stress_bot = self.M*(self.centroids-self.y_bot)/self.I
+        self.flexural_stress_top = self.M*(self.y_top-self.centroids)/self.I
         
-        self.flexural_stress_bot = self.bmd*(self.centroids-self.y_bot)/self.I
-        self.flexural_stress_top = self.bmd*(self.y_top-self.centroids)/self.I
 
     def plot(self):
         x = self.x.to(u.mm).magnitude
