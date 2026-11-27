@@ -65,24 +65,24 @@ glue_shear_strength = 2 * u.MPa
 #diaphragm_section
 #will be considered in the moment of inertia calculation 
 #if combined into the Beam (optional)
-diaphragm_section = [
-    (t,          -inner_z),
-    (t,           inner_z),
-    (deck_y - t,  inner_z),
-    (deck_y - t,  inner_z - tab_width),
-    (deck_y,      inner_z - tab_width),
-    (deck_y,     -inner_z + tab_width),
-    (deck_y - t, -inner_z + tab_width),
-    (deck_y - t, -inner_z),
-]
+# diaphragm_section = [
+#     (t,          -inner_z),
+#     (t,           inner_z),
+#     (deck_y - t,  inner_z),
+#     (deck_y - t,  inner_z - tab_width),
+#     (deck_y,      inner_z - tab_width),
+#     (deck_y,     -inner_z + tab_width),
+#     (deck_y - t, -inner_z + tab_width),
+#     (deck_y - t, -inner_z),
+# ]
 
-diaphragms = [
-    Matboard([
-        (x, y, z)
-        for y, z in diaphragm_section
-    ], "x")
-    for x in diaphragm_positions
-]
+# diaphragms = [
+#     Matboard([
+#         (x, y, z)
+#         for y, z in diaphragm_section
+#     ], "x")
+#     for x in diaphragm_positions
+# ]
 
 glue = [
     (deck_y, 2 * (tab_width+t)),
