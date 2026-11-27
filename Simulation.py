@@ -108,11 +108,34 @@ class Simulation:
         
     def calculations(self,position):
         self.BMD(position)
-        #applied stresses
-        self.shear_stress_center = self.V*self.first_moments/(self.I*self.widths)
-        self.shear_stress_glue = self.V*self.first_moments_glue/(self.I*self.glue_width)
-        self.flexural_stress_bot = self.M*(self.centroids-self.y_bot)/self.I
-        self.flexural_stress_top = self.M*(self.y_top-self.centroids)/self.I
+        self.applied_stresses(self.V, self.M)
+
+    def applied_stresses(self, shear, moment):
+        self.shear_stress_center = shear*self.first_moments/(self.I*self.widths)
+        self.shear_stress_glue = shear*self.first_moments_glue/(self.I*self.glue_width)
+        self.flexural_stress_bot = moment*(self.centroids-self.y_bot)/self.I
+        self.flexural_stress_top = moment*(self.y_top-self.centroids)/self.I
+
+    def buckling_stresses(self):
+        (
+            middle_flange_width,
+            side_flange_width,
+            web_top,
+            web_height,
+            diaphragm_positions
+        ) = self.beam.buckling_dimensions.values()
+        t = Matboard.t
+        plate_factor = np.pi**2 * Matboard.E_m / (12 * (1 - Matboard.v_m**2))
+        middle_flange = 4 * plate_factor * (t / middle_flange_width)**2
+        side_flange = 0.425 * plate_factor * (t / side_flange_width)**2
+        compressed_web_depth = web_top - self.centroids
+        web_compression = 6 * plate_factor * (t / compressed_web_depth)**2
+
+        web_shear = np.ones(len(self.x)) * 5 * plate_factor * (t / web_height)**2
+        for left, right in zip(diaphragm_positions, diaphragm_positions[1:]):
+            in_panel = (left <= self.x) & (self.x < right)
+            web_shear[in_panel] += 5 * plate_factor * (t / (right - left))**2
+        return middle_flange, side_flange, web_compression, web_shear
         
 
     def plot(self):

@@ -47,6 +47,16 @@ diaphragm_positions = [
     support_R - offset,
     support_R + offset,
 ]
+#dimensions for minimum buckling stress
+#choose the appropriate dimension if there's a varying dimension
+buckling_dimensions = {
+    "middle_flange_width": 2 * web_z,               
+    "side_flange_width": half_top - web_z,
+    "web_top": deck_y,
+    "web_height": deck_y - t,
+    "diaphragm_positions": diaphragm_positions,
+}
+glue_shear_strength = 2 * u.MPa 
 
 diaphragm_section = [
     (t,          -inner_z),
@@ -71,4 +81,4 @@ glue = [
     (deck_y, 2 * tab_width),
 ]
 
-beam_0 = Beam(longitudinal_boards + diaphragms, glue)
+beam_0 = Beam(longitudinal_boards + diaphragms, glue, buckling_dimensions )

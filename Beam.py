@@ -3,9 +3,10 @@ import numpy as np
 import compute
 
 class Beam:
-    def __init__(self, matboards, glue):
+    def __init__(self, matboards, glue, buckling_dimensions ):
         self.matboards = matboards
         self.glue = glue
+        self.buckling_dimensions = buckling_dimensions 
 
     def get_endpoints(self):
         bounds = []
