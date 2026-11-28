@@ -4,7 +4,7 @@ import numpy as np
 from Matboard import u
 
 
-from config_trapezoid_3 import beam_1,beam_0
+from configs.config_trapezoid_3 import beam_1,beam_0
 
 
 def plot_matboard(

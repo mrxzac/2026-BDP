@@ -3,7 +3,7 @@ import numpy as np
 from Simulation import Simulation
 import matplotlib.pyplot as plt
 
-from config_trapezoid_3 import beam_0
+from configs.config_trapezoid_3 import beam_0
 
 x = 0 * u.mm
 print(f"Section x = {x:~P}, centroid y = {beam_0.get_centroid(x):~P}")
