@@ -9,8 +9,8 @@ tabs = 8, 5
 profile = [(0, 0), (60, 0), (420, -drop), (840, -drop), (1200, 0), (1260, 0)]
 
 longitudinal_boards = [
-    Matboard([(0, deck - t / 2, -half_deck), (310, deck - t / 2, -half_deck), (310, deck - t / 2, half_deck), (0, deck - t / 2, half_deck)], "y"),
-    Matboard([(310, deck - t / 2, -half_deck), (length, deck - t / 2, -half_deck), (length, deck - t / 2, half_deck), (310, deck - t / 2, half_deck)], "y"),
+    Matboard([(0, deck - t / 2, -half_deck), (310.5, deck - t / 2, -half_deck), (310.5, deck - t / 2, half_deck), (0, deck - t / 2, half_deck)], "y"),
+    Matboard([(310.5, deck - t / 2, -half_deck), (length, deck - t / 2, -half_deck), (length, deck - t / 2, half_deck), (310.5, deck - t / 2, half_deck)], "y"),
     Matboard([(200, deck - 1.5 * t, -inner), (1060, deck - 1.5 * t, -inner), (1060, deck - 1.5 * t, inner), (200, deck - 1.5 * t, inner)], "y"),
     Matboard([(350, deck - 2.5 * t, -inner), (910, deck - 2.5 * t, -inner), (910, deck - 2.5 * t, inner), (350, deck - 2.5 * t, inner)], "y"),
 ]

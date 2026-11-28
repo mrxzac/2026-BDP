@@ -4,7 +4,7 @@ import numpy as np
 from Matboard import u
 
 
-from config_trapezoid import beam_1,beam_0
+from config_trapezoid_3 import beam_1,beam_0
 
 
 def plot_matboard(
@@ -35,7 +35,7 @@ def plot_beam(beam,alpha=0.4,padding=5):
     ax = fig.add_subplot(111, projection="3d")
     colors = {"x": "orange","y": "skyblue","z": "lightgreen"}
     all_vertices = []
-    beam.matboards = [beam.matboards[9]]
+    #beam.matboards = [beam.matboards[9]]
     for board in beam.matboards:
         vertices = plot_matboard(board,ax,color=colors[board.dirc],alpha=alpha)
         all_vertices.append(vertices)

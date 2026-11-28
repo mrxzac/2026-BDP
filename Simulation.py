@@ -121,7 +121,7 @@ class Simulation:
             middle_flange_width,
             side_flange_width,
             web_top,
-            web_height,
+            _,
             diaphragm_positions
         ) = self.beam.buckling_dimensions.values()
         t = Matboard.t
@@ -131,13 +131,28 @@ class Simulation:
         compressed_web_depth = web_top - self.centroids
         web_compression = 6 * plate_factor * (t / compressed_web_depth)**2
 
-        maxwidth = 0
+        web_height = np.zeros(len(self.x)) * u.mm
+        for i, x in enumerate(self.x):
+            web_sections = [
+                board.get_sec_mm("x", x)
+                for board in self.beam.matboards
+                if board.dirc == "z"
+            ]
+            web_sections = [section for section in web_sections if len(section)]
+            if not web_sections:
+                raise ValueError(f"No web section found at x={x}.")
+            web_y = np.concatenate(web_sections)[:, 1]
+            web_height[i] = (web_y.max() - web_y.min()) * u.mm
+        print(web_height)
+        web_shear = np.full(len(self.x),np.inf) * u.MPa
         for left, right in zip(diaphragm_positions, diaphragm_positions[1:]):
-            if right-left > maxwidth:
-                maxwidth = right-left
-            
-        web_shear = 5 * plate_factor *( (t / web_height)**2 +(t / maxwidth)**2)
-        
+            i_l = np.argmin(np.abs(self.x-left))
+            i_r = np.argmin(np.abs(self.x-right))
+            for in_panel in range(i_l,i_r):
+                web_shear[in_panel] = (
+                    5 * plate_factor
+                    * ((t / (right - left))**2 + (t / web_height[in_panel])**2)
+                )
         return middle_flange, side_flange, web_compression, web_shear
         
 
